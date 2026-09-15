@@ -1,0 +1,292 @@
+# Builds and publishes nightly sideload APKs on push to "develop" or manual trigger.
+#
+# Runs on the self-hosted runner (label: linux). Shares the fixed $BUILD_DIR with
+# release.yml for reproducible compilation, and shares concurrency group "release"
+# to prevent staging tree collisions between workflows.
+name: Nightly Release
+
+on:
+  push:
+    branches:
+      - 'develop'
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  # GitHub owner/repo that receives the public nightly release.
+  GH_REPO: LuminaAppsDev/cairn
+  # Absolute path every Flutter/Gradle step compiles from.
+  BUILD_DIR: /build/cairn
+
+jobs:
+  nightly:
+    runs-on: linux
+    steps:
+      - name: Checkout
+        uses: https://github.com/actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Resolve pinned Flutter toolchain
+        # Single source of truth is .forgejo/workflows/release.yml.
+        run: |
+          set -euo pipefail
+          workflow=".forgejo/workflows/release.yml"
+          version=$(sed -n -E "s/.*FLUTTER_VERSION:[[:space:]]*'?([0-9.]+)'?.*/\1/p" "$workflow" | head -1)
+          commit=$(sed -n -E "s/.*FLUTTER_COMMIT:[[:space:]]*'?([0-9a-f]{40})'?.*/\1/p" "$workflow" | head -1)
+          if [ -z "$version" ] || [ -z "$commit" ]; then
+            echo "Could not read FLUTTER_VERSION/FLUTTER_COMMIT from $workflow." >&2
+            exit 1
+          fi
+          echo "FLUTTER_VERSION=$version" >> "$GITHUB_ENV"
+          echo "FLUTTER_COMMIT=$commit" >> "$GITHUB_ENV"
+
+      - name: Stage source at the pinned build path
+        run: |
+          set -euo pipefail
+          parent="$(dirname "$BUILD_DIR")"
+          if [ ! -d "$parent" ]; then
+            echo "Missing $parent - one-time host prep required, as root:" >&2
+            echo "  sudo mkdir -p $parent" >&2
+            echo "  sudo chown \"$(id -u -n):\" $parent && sudo chmod 700 $parent" >&2
+            echo "See docs/RELEASE.md 2a-repro." >&2
+            exit 1
+          fi
+          if [ -L "$parent" ] || [ -L "$BUILD_DIR" ]; then
+            echo "Refusing to build: $parent or $BUILD_DIR is a symlink" >&2
+            exit 1
+          fi
+          if [ "$(stat -c '%u' "$parent")" != "$(id -u)" ]; then
+            echo "$parent must be owned by uid $(id -u), found $(stat -c '%u' "$parent")" >&2
+            exit 1
+          fi
+          if [ "$(stat -c '%a' "$parent")" != "700" ]; then
+            echo "$parent must be mode 700, found $(stat -c '%a' "$parent")" >&2
+            exit 1
+          fi
+          avail=$(df -Pk "$parent" | awk 'NR==2 {print $4}')
+          if [ "$avail" -lt 8388608 ]; then
+            echo "Need >=8 GiB free at $parent, have $((avail / 1048576)) GiB" >&2
+            exit 1
+          fi
+          rm -rf "$BUILD_DIR"
+          mkdir -p "$BUILD_DIR"
+          cp -a "$GITHUB_WORKSPACE"/. "$BUILD_DIR"/
+
+      - name: Set up Java
+        uses: https://github.com/actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        run: |
+          set -euo pipefail
+          flutter_home="$HOME/flutter-$FLUTTER_VERSION"
+          if [ ! -x "$flutter_home/bin/flutter" ]; then
+            staging="$(mktemp -d "$HOME/.flutter-staging.XXXXXXXX")"
+            trap 'rm -rf "$staging"' EXIT
+            git clone --depth 1 -b "$FLUTTER_VERSION" \
+              https://github.com/flutter/flutter.git "$staging/flutter"
+            mv -T "$staging/flutter" "$flutter_home" 2>/dev/null || true
+          fi
+          if [ ! -x "$flutter_home/bin/flutter" ]; then
+            echo "No usable Flutter SDK at $flutter_home after install." >&2
+            exit 1
+          fi
+          git config --global --add safe.directory "$flutter_home"
+          actual=$(git -C "$flutter_home" rev-parse HEAD)
+          if [ "$actual" != "$FLUTTER_COMMIT" ]; then
+            echo "Flutter $FLUTTER_VERSION resolved to $actual, expected $FLUTTER_COMMIT" >&2
+            exit 1
+          fi
+          echo "$flutter_home/bin" >> "$GITHUB_PATH"
+
+      - name: Dependencies
+        run: |
+          set -euo pipefail
+          cd "$BUILD_DIR"
+          export PUB_CACHE="$BUILD_DIR/.pub-cache"
+          flutter pub get --enforce-lockfile
+
+      - name: Check formatting
+        run: |
+          set -euo pipefail
+          cd "$BUILD_DIR"
+          dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze and test
+        env:
+          TZ: Europe/Berlin
+        run: |
+          set -euo pipefail
+          cd "$BUILD_DIR"
+          export PUB_CACHE="$BUILD_DIR/.pub-cache"
+          dart analyze --fatal-infos --fatal-warnings
+          flutter test --no-pub
+
+      - name: Configure signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS || secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD || secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          cd "$BUILD_DIR"
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            keystore="$BUILD_DIR/android/app/release-keystore.jks"
+            (umask 077 && printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$keystore")
+            (umask 077 && {
+              echo "storeFile=$keystore"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > android/key.properties)
+            echo "Configured release keystore signing."
+          else
+            echo "No keystore secret found; defaulting to debug signing config."
+          fi
+
+      - name: Build release APKs
+        run: |
+          set -euo pipefail
+          cd "$BUILD_DIR"
+          export PUB_CACHE="$BUILD_DIR/.pub-cache"
+          flutter build apk --release --split-per-abi
+          flutter build apk --release
+
+      - name: Package release assets
+        run: |
+          set -euo pipefail
+          cd "$BUILD_DIR"
+          raw_ver=$(sed -n -E "s/^version:[[:space:]]*'?([^+[:space:]']+).*/\1/p" pubspec.yaml | head -1)
+          if [ -z "$raw_ver" ]; then
+            echo "Could not extract version from pubspec.yaml" >&2
+            exit 1
+          fi
+          date_postfix=$(date -u +'%Y%m%d')
+          version_name="v${raw_ver}-${date_postfix}"
+          echo "NIGHTLY_VERSION_NAME=${version_name}" >> "$GITHUB_ENV"
+
+          apks="build/app/outputs/flutter-apk"
+          if [ -z "${GITHUB_WORKSPACE:-}" ]; then
+            echo "GITHUB_WORKSPACE is unset; refusing to build a dist path from it" >&2
+            exit 1
+          fi
+          dist="$GITHUB_WORKSPACE/dist"
+          rm -rf "$dist"
+          mkdir -p "$dist"
+          cp "$apks/app-release.apk" "$dist/cairn-${version_name}.apk"
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            cp "$apks/app-${abi}-release.apk" "$dist/cairn-${version_name}-${abi}.apk"
+          done
+          cd "$dist"
+          for f in *.apk; do
+            sha256sum "$f" > "$f.sha256"
+          done
+          ls -la
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="nightly"
+          version_name="${NIGHTLY_VERSION_NAME}"
+          cd "$GITHUB_WORKSPACE/dist"
+          api="https://api.github.com/repos/${GH_REPO}"
+          accept="Accept: application/vnd.github+json"
+          apiver="X-GitHub-Api-Version: 2022-11-28"
+          cfg="$(mktemp)"
+          trap 'rm -f "$cfg"' EXIT
+          body="$(mktemp)"
+          trap 'rm -f "$cfg" "$body"' EXIT
+          dump_body() {
+            head -c 2000 "$body" | sed -E \
+              -e 's#([Bb]earer|[Tt]oken)[[:space:]]+[A-Za-z0-9._~+/=-]{8,}#\1 [REDACTED]#g' \
+              -e 's#("? [Aa]uthorization"?[[:space:]]*[:=][[:space:]]*"?)[^",}]*#\1[REDACTED]#g'
+            echo
+          }
+          printf 'header = "Authorization: Bearer %s"\n' "$GH_TOKEN" > "$cfg"
+          curlopts=(--config "$cfg" --connect-timeout 30 --max-time 900)
+          ref_http=$(curl -sS "${curlopts[@]}" -o "$body" -w '%{http_code}' \
+            "$api/git/refs/tags/$tag" -H "$accept" -H "$apiver") || true
+          if [ "$ref_http" = "200" ]; then
+            curl -fsS "${curlopts[@]}" -X PATCH "$api/git/refs/tags/$tag" \
+              -H "$accept" -H "$apiver" \
+              -d "$(jq -n --arg sha "$GITHUB_SHA" '{sha:$sha, force:true}')" >/dev/null
+          else
+            curl -fsS "${curlopts[@]}" -X POST "$api/git/refs" \
+              -H "$accept" -H "$apiver" \
+              -d "$(jq -n --arg sha "$GITHUB_SHA" --arg t "refs/tags/$tag" '{ref:$t, sha:$sha}')" >/dev/null
+          fi
+          http=$(curl -sS "${curlopts[@]}" --retry 3 --retry-delay 2 \
+            -o "$body" -w '%{http_code}' \
+            "$api/releases/tags/$tag" -H "$accept" -H "$apiver") || {
+            echo "release lookup for $tag failed: curl transport error" >&2
+            exit 1
+          }
+          case "$http" in
+            200)
+              release_id=$(jq -r '.id // empty' < "$body" 2>/dev/null || true)
+              if [ -z "$release_id" ]; then
+                echo "release lookup for $tag: HTTP 200, but no release id" >&2
+                dump_body >&2
+                exit 1
+              fi
+              payload=$(jq -n --arg t "$tag" --arg sha "$GITHUB_SHA" --arg name "$version_name" \
+                '{tag_name:$t, target_commitish:$sha, name:$name, body:("Automated nightly release: " + $name), prerelease:true}')
+              curl -fsS "${curlopts[@]}" -X PATCH "$api/releases/$release_id" \
+                -H "$accept" -H "$apiver" -d "$payload" >/dev/null
+              ;;
+            404)
+              payload=$(jq -n --arg t "$tag" --arg sha "$GITHUB_SHA" --arg name "$version_name" \
+                '{tag_name:$t, target_commitish:$sha, name:$name, body:("Automated nightly release: " + $name), prerelease:true}')
+              release_id=$(curl -fsS "${curlopts[@]}" -X POST "$api/releases" \
+                -H "$accept" -H "$apiver" -d "$payload" | jq -r '.id')
+              ;;
+            *)
+              echo "release lookup for $tag failed: HTTP $http" >&2
+              dump_body >&2
+              exit 1
+              ;;
+          esac
+          [ -n "$release_id" ] && [ "$release_id" != "null" ]
+          assets=$(curl -fsS "${curlopts[@]}" --retry 3 --retry-delay 2 \
+            "$api/releases/${release_id}/assets" -H "$accept" -H "$apiver")
+          printf '%s' "$assets" \
+            | jq -r '.[] | .id' \
+            | while read -r aid; do
+                if [ -n "$aid" ]; then
+                  curl -fsS "${curlopts[@]}" -X DELETE "$api/releases/assets/$aid" -H "$accept" -H "$apiver"
+                fi
+              done
+          up="https://uploads.github.com/repos/${GH_REPO}/releases/${release_id}/assets"
+          for f in *; do
+            case "$f" in
+              *.apk) ct='application/vnd.android.package-archive' ;;
+              *)     ct='text/plain' ;;
+            esac
+            curl -fsS "${curlopts[@]}" -X POST "$up?name=$f" \
+              -H "Content-Type: $ct" --data-binary "@$f"
+          done
+
+      - name: Clean up signing material
+        if: always()
+        run: |
+          set -uo pipefail
+          status=0
+          if [ -n "${BUILD_DIR:-}" ] && [ "$BUILD_DIR" != "/" ]; then
+            rm -f "$BUILD_DIR/android/key.properties" \
+                  "$BUILD_DIR/android/app/release-keystore.jks" || status=1
+            rm -rf "$BUILD_DIR" || status=1
+          fi
+          if [ -n "${GITHUB_WORKSPACE:-}" ]; then
+            rm -rf "$GITHUB_WORKSPACE/dist" || status=1
+          fi
+          if [ "$status" -ne 0 ]; then
+            echo "Cleanup failed to remove signing material - inspect $BUILD_DIR" >&2
+          fi
+          exit "$status"
