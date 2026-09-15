@@ -12,7 +12,8 @@ enum BmiCategory {
   overweight,
 
   /// BMI ≥ 30.
-  obese;
+  obese
+  ;
 
   /// Whether this category is within the normal range.
   bool get isNormal => this == BmiCategory.normal;

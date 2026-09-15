@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://cairn.health/schemas/cairn/body-height-1.0.json",
+    "title": "Body Height",
+    "description": "Body height measurement in cm.",
+    "type": "object",
+    "properties": {
+        "body_height": {
+            "type": "object",
+            "properties": {
+                "value": { "type": "number" },
+                "unit": { "type": "string", "enum": ["cm", "m"] }
+            },
+            "required": ["value", "unit"]
+        },
+        "effective_time_frame": {
+            "type": "object",
+            "properties": {
+                "date_time": { "type": "string", "format": "date-time" }
+            },
+            "required": ["date_time"]
+        }
+    },
+    "required": ["body_height", "effective_time_frame"]
+}

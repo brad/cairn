@@ -17,7 +17,6 @@ void main() {
     mapper = DefaultOmhMapper();
   });
 
-  // Convenience accessors that keep the strict analyzer happy.
   Map<String, Object?> bodyOf(Map<String, Object?> dataPoint) =>
       dataPoint['body']! as Map<String, Object?>;
   Map<String, Object?> headerOf(Map<String, Object?> dataPoint) =>
@@ -85,6 +84,81 @@ void main() {
     final provenance =
         headerOf(dp)['acquisition_provenance']! as Map<String, Object?>;
     expect(provenance['modality'], 'self-reported');
+  });
+
+  test('body fat percentage maps to a schema-valid body + header', () {
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.bodyFatPercentage,
+        value: 18.5,
+        unit: '%',
+        start: t0,
+        end: t0,
+        source: sensed,
+      ),
+    );
+    expectValid(schemas.bodyFatPercentage, bodyOf(dp));
+    expectValid(schemas.header, headerOf(dp));
+  });
+
+  test('lean body mass maps to a schema-valid body + header', () {
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.leanBodyMass,
+        value: 58.2,
+        unit: 'kg',
+        start: t0,
+        end: t0,
+        source: sensed,
+      ),
+    );
+    expectValid(schemas.leanBodyMass, bodyOf(dp));
+    expectValid(schemas.header, headerOf(dp));
+  });
+
+  test('body mass index maps to a schema-valid body + header', () {
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.bodyMassIndex,
+        value: 22.4,
+        unit: 'kg/m2',
+        start: t0,
+        end: t0,
+        source: sensed,
+      ),
+    );
+    expectValid(schemas.bodyMassIndex, bodyOf(dp));
+    expectValid(schemas.header, headerOf(dp));
+  });
+
+  test('body water mass maps to a schema-valid body + header', () {
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.bodyWaterMass,
+        value: 42.1,
+        unit: 'kg',
+        start: t0,
+        end: t0,
+        source: sensed,
+      ),
+    );
+    expectValid(schemas.bodyWaterMass, bodyOf(dp));
+    expectValid(schemas.header, headerOf(dp));
+  });
+
+  test('body height maps to a schema-valid body + header', () {
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.height,
+        value: 178,
+        unit: 'cm',
+        start: t0,
+        end: t0,
+        source: sensed,
+      ),
+    );
+    expectValid(schemas.bodyHeight, bodyOf(dp));
+    expectValid(schemas.header, headerOf(dp));
   });
 
   test('workout maps to a schema-valid IEEE physical-activity body', () {

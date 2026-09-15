@@ -22,7 +22,8 @@ enum RecordingMethodKind {
   active,
 
   /// Recording method unknown.
-  unknown;
+  unknown
+  ;
 
   /// OMH `modality`: manual entry is `self-reported`, everything else `sensed`.
   String get omhModality =>
@@ -56,7 +57,8 @@ enum SleepStage {
   /// An overall sleep session with no per-stage breakdown (e.g. a manual
   /// entry). Counts as time asleep, but is tracked separately from the stages
   /// so it is never conflated with `asleepUnspecified` sub-segments.
-  session;
+  session
+  ;
 
   /// The wire value emitted in the `cairn:sleep-stage` schema body.
   String get wireName => switch (this) {
