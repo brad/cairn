@@ -17,7 +17,7 @@ concurrency:
 
 env:
   # GitHub owner/repo that receives the public nightly release.
-  GH_REPO: LuminaAppsDev/cairn
+  GH_REPO: brad/cairn
   # Absolute path every Flutter/Gradle step compiles from.
   BUILD_DIR: /build/cairn
 
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: https://github.com/actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Resolve pinned Flutter toolchain
         # Single source of truth is .forgejo/workflows/release.yml.
