@@ -75,7 +75,7 @@ jobs:
           cp -a "$GITHUB_WORKSPACE"/. "$BUILD_DIR"/
 
       - name: Set up Java
-        uses: https://github.com/actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: '17'
