@@ -1,6 +1,6 @@
 # Builds and publishes nightly sideload APKs on push to "develop" or manual trigger.
 #
-# Runs on the self-hosted runner (label: linux). Shares the fixed $BUILD_DIR with
+# Runs on GitHub-hosted runner (ubuntu-latest). Shares the fixed $BUILD_DIR with
 # release.yml for reproducible compilation, and shares concurrency group "release"
 # to prevent staging tree collisions between workflows.
 name: Nightly Release
@@ -47,11 +47,9 @@ jobs:
           set -euo pipefail
           parent="$(dirname "$BUILD_DIR")"
           if [ ! -d "$parent" ]; then
-            echo "Missing $parent - one-time host prep required, as root:" >&2
-            echo "  sudo mkdir -p $parent" >&2
-            echo "  sudo chown \"$(id -u -n):\" $parent && sudo chmod 700 $parent" >&2
-            echo "See docs/RELEASE.md 2a-repro." >&2
-            exit 1
+            sudo mkdir -p "$parent"
+            sudo chown "$(id -u -n):" "$parent"
+            sudo chmod 700 "$parent"
           fi
           if [ -L "$parent" ] || [ -L "$BUILD_DIR" ]; then
             echo "Refusing to build: $parent or $BUILD_DIR is a symlink" >&2
