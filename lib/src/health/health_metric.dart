@@ -16,7 +16,23 @@ enum HealthMetric {
   activity,
 
   /// Body weight, in kilograms.
-  weight;
+  weight,
+
+  /// Body fat percentage (%).
+  bodyFatPercentage,
+
+  /// Lean body mass (fat-free mass), in kilograms.
+  leanBodyMass,
+
+  /// Body mass index (BMI), in kg/m^2.
+  bodyMassIndex,
+
+  /// Body water mass, in kilograms.
+  bodyWaterMass,
+
+  /// Height, in meters.
+  height
+  ;
 
   /// Stable on-disk slug for this metric — the shard directory name and the
   /// `manifest.json` anchor key (DESIGN.md §5.3). Part of the file format, so
@@ -27,6 +43,11 @@ enum HealthMetric {
     HealthMetric.sleep => 'sleep',
     HealthMetric.activity => 'activity',
     HealthMetric.weight => 'weight',
+    HealthMetric.bodyFatPercentage => 'body-fat-percentage',
+    HealthMetric.leanBodyMass => 'lean-body-mass',
+    HealthMetric.bodyMassIndex => 'body-mass-index',
+    HealthMetric.bodyWaterMass => 'body-water-mass',
+    HealthMetric.height => 'height',
   };
 
   /// The metric for [slug], or `null` if unknown (e.g. a slug from a newer
@@ -37,6 +58,11 @@ enum HealthMetric {
     'sleep' => HealthMetric.sleep,
     'activity' => HealthMetric.activity,
     'weight' => HealthMetric.weight,
+    'body-fat-percentage' => HealthMetric.bodyFatPercentage,
+    'lean-body-mass' => HealthMetric.leanBodyMass,
+    'body-mass-index' => HealthMetric.bodyMassIndex,
+    'body-water-mass' => HealthMetric.bodyWaterMass,
+    'height' => HealthMetric.height,
     _ => null,
   };
 }

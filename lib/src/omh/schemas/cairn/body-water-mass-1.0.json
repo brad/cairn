@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://cairn.health/schemas/cairn/body-water-mass-1.0.json",
+    "title": "Body Water Mass",
+    "description": "Body water mass measurement in kg.",
+    "type": "object",
+    "properties": {
+        "body_water_mass": {
+            "type": "object",
+            "properties": {
+                "value": { "type": "number" },
+                "unit": { "type": "string", "enum": ["kg"] }
+            },
+            "required": ["value", "unit"]
+        },
+        "effective_time_frame": {
+            "type": "object",
+            "properties": {
+                "date_time": { "type": "string", "format": "date-time" }
+            },
+            "required": ["date_time"]
+        }
+    },
+    "required": ["body_water_mass", "effective_time_frame"]
+}

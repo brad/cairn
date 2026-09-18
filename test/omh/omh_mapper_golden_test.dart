@@ -66,6 +66,146 @@ void main() {
     expect(prov['modality'], 'sensed');
   });
 
+  test('body fat percentage has the exact schema shape', () {
+    final t = DateTime(2026, 6, 14, 8, 30, 55);
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.bodyFatPercentage,
+        value: 18.5,
+        unit: '%',
+        start: t,
+        end: t,
+        source: source,
+      ),
+    );
+
+    final body = asMap(dp['body']);
+    expect(
+      body.keys,
+      unorderedEquals(['body_fat_percentage', 'effective_time_frame']),
+    );
+    expect(body['body_fat_percentage'], {'value': 18.5, 'unit': '%'});
+
+    final header = asMap(dp['header']);
+    expect(header['schema_id'], {
+      'namespace': 'omh',
+      'name': 'body-fat-percentage',
+      'version': '1.0',
+    });
+  });
+
+  test('lean body mass has the exact schema shape', () {
+    final t = DateTime(2026, 6, 14, 8, 30, 55);
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.leanBodyMass,
+        value: 61.2,
+        unit: 'kg',
+        start: t,
+        end: t,
+        source: source,
+      ),
+    );
+
+    final body = asMap(dp['body']);
+    expect(
+      body.keys,
+      unorderedEquals(['lean_body_mass', 'effective_time_frame']),
+    );
+    expect(body['lean_body_mass'], {'value': 61.2, 'unit': 'kg'});
+
+    final header = asMap(dp['header']);
+    expect(header['schema_id'], {
+      'namespace': 'cairn',
+      'name': 'lean-body-mass',
+      'version': '1.0',
+    });
+  });
+
+  test('body mass index has the exact schema shape', () {
+    final t = DateTime(2026, 6, 14, 8, 30, 55);
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.bodyMassIndex,
+        value: 23.1,
+        unit: 'kg/m2',
+        start: t,
+        end: t,
+        source: source,
+      ),
+    );
+
+    final body = asMap(dp['body']);
+    expect(
+      body.keys,
+      unorderedEquals(['body_mass_index', 'effective_time_frame']),
+    );
+    expect(body['body_mass_index'], {'value': 23.1, 'unit': 'kg/m2'});
+
+    final header = asMap(dp['header']);
+    expect(header['schema_id'], {
+      'namespace': 'omh',
+      'name': 'body-mass-index',
+      'version': '1.0',
+    });
+  });
+
+  test('body water mass has the exact schema shape', () {
+    final t = DateTime(2026, 6, 14, 8, 30, 55);
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.bodyWaterMass,
+        value: 45,
+        unit: 'kg',
+        start: t,
+        end: t,
+        source: source,
+      ),
+    );
+
+    final body = asMap(dp['body']);
+    expect(
+      body.keys,
+      unorderedEquals(['body_water_mass', 'effective_time_frame']),
+    );
+    expect(body['body_water_mass'], {'value': 45.0, 'unit': 'kg'});
+
+    final header = asMap(dp['header']);
+    expect(header['schema_id'], {
+      'namespace': 'cairn',
+      'name': 'body-water-mass',
+      'version': '1.0',
+    });
+  });
+
+  test('body height has the exact schema shape', () {
+    final t = DateTime(2026, 6, 14, 8, 30, 55);
+    final dp = mapper.toDataPoint(
+      ScalarSample(
+        metric: HealthMetric.height,
+        value: 180,
+        unit: 'cm',
+        start: t,
+        end: t,
+        source: source,
+      ),
+    );
+
+    final body = asMap(dp['body']);
+    expect(
+      body.keys,
+      unorderedEquals(['body_height', 'effective_time_frame']),
+    );
+    expect(body['body_height'], {'value': 180.0, 'unit': 'cm'});
+
+    final header = asMap(dp['header']);
+    expect(header['schema_id'], {
+      'namespace': 'omh',
+      'name': 'body-height',
+      'version': '1.0',
+    });
+  });
+
   test('step-count uses a time_interval frame with the steps unit', () {
     final start = DateTime(2026, 6, 14);
     final end = DateTime(2026, 6, 15);

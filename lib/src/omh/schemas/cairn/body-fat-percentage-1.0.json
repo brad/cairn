@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://cairn.health/schemas/cairn/body-fat-percentage-1.0.json",
+    "title": "Body Fat Percentage",
+    "description": "Body fat percentage measurement.",
+    "type": "object",
+    "properties": {
+        "body_fat_percentage": {
+            "type": "object",
+            "properties": {
+                "value": { "type": "number" },
+                "unit": { "type": "string", "enum": ["%"] }
+            },
+            "required": ["value", "unit"]
+        },
+        "effective_time_frame": {
+            "type": "object",
+            "properties": {
+                "date_time": { "type": "string", "format": "date-time" }
+            },
+            "required": ["date_time"]
+        }
+    },
+    "required": ["body_fat_percentage", "effective_time_frame"]
+}

@@ -31,6 +31,11 @@ final class DefaultOmhMapper implements OmhMapper {
     HealthMetric.weight => 'omh:body-weight:2.0',
     HealthMetric.sleep => 'cairn:sleep-stage:1.0',
     HealthMetric.activity => 'omh:physical-activity:1.0',
+    HealthMetric.bodyFatPercentage => 'omh:body-fat-percentage:1.0',
+    HealthMetric.leanBodyMass => 'cairn:lean-body-mass:1.0',
+    HealthMetric.bodyMassIndex => 'omh:body-mass-index:1.0',
+    HealthMetric.bodyWaterMass => 'cairn:body-water-mass:1.0',
+    HealthMetric.height => 'omh:body-height:1.0',
   };
 
   @override
@@ -84,6 +89,67 @@ final class DefaultOmhMapper implements OmhMapper {
         <String, Object?>{
           'step_count': _unitValue(s.value, 'steps'),
           'effective_time_frame': _intervalFrame(s.start, s.end),
+        },
+        s.source,
+        s.start,
+      ),
+      HealthMetric.bodyFatPercentage => _wrap(
+        const SchemaId(
+          namespace: 'omh',
+          name: 'body-fat-percentage',
+          version: '1.0',
+        ),
+        <String, Object?>{
+          'body_fat_percentage': _unitValue(s.value, '%'),
+          'effective_time_frame': _pointFrame(s.start),
+        },
+        s.source,
+        s.start,
+      ),
+      HealthMetric.leanBodyMass => _wrap(
+        const SchemaId(
+          namespace: 'cairn',
+          name: 'lean-body-mass',
+          version: '1.0',
+        ),
+        <String, Object?>{
+          'lean_body_mass': _unitValue(s.value, 'kg'),
+          'effective_time_frame': _pointFrame(s.start),
+        },
+        s.source,
+        s.start,
+      ),
+      HealthMetric.bodyMassIndex => _wrap(
+        const SchemaId(
+          namespace: 'omh',
+          name: 'body-mass-index',
+          version: '1.0',
+        ),
+        <String, Object?>{
+          'body_mass_index': _unitValue(s.value, 'kg/m2'),
+          'effective_time_frame': _pointFrame(s.start),
+        },
+        s.source,
+        s.start,
+      ),
+      HealthMetric.bodyWaterMass => _wrap(
+        const SchemaId(
+          namespace: 'cairn',
+          name: 'body-water-mass',
+          version: '1.0',
+        ),
+        <String, Object?>{
+          'body_water_mass': _unitValue(s.value, 'kg'),
+          'effective_time_frame': _pointFrame(s.start),
+        },
+        s.source,
+        s.start,
+      ),
+      HealthMetric.height => _wrap(
+        const SchemaId(namespace: 'omh', name: 'body-height', version: '1.0'),
+        <String, Object?>{
+          'body_height': _unitValue(s.value, 'cm'),
+          'effective_time_frame': _pointFrame(s.start),
         },
         s.source,
         s.start,

@@ -88,6 +88,13 @@ final class HealthPackageGateway implements HealthGateway {
     HealthMetric.weight => const [HealthDataType.WEIGHT],
     HealthMetric.activity => const [HealthDataType.WORKOUT],
     HealthMetric.sleep => _isIos ? _iosSleepTypes : _androidSleepTypes,
+    HealthMetric.bodyFatPercentage => const [
+      HealthDataType.BODY_FAT_PERCENTAGE,
+    ],
+    HealthMetric.leanBodyMass => const [HealthDataType.LEAN_BODY_MASS],
+    HealthMetric.bodyMassIndex => const [HealthDataType.BODY_MASS_INDEX],
+    HealthMetric.bodyWaterMass => const [HealthDataType.BODY_WATER_MASS],
+    HealthMetric.height => const [HealthDataType.HEIGHT],
   };
 
   // Authorisation must also cover the records the plugin reads alongside a
@@ -115,7 +122,12 @@ final class HealthPackageGateway implements HealthGateway {
     return switch (metric) {
       HealthMetric.heartRate ||
       HealthMetric.steps ||
-      HealthMetric.weight => _scalar(metric, point, source),
+      HealthMetric.weight ||
+      HealthMetric.bodyFatPercentage ||
+      HealthMetric.leanBodyMass ||
+      HealthMetric.bodyMassIndex ||
+      HealthMetric.bodyWaterMass ||
+      HealthMetric.height => _scalar(metric, point, source),
       HealthMetric.activity => _workout(point, source),
       HealthMetric.sleep => _sleep(point, source),
     };

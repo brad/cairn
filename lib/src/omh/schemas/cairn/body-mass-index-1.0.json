@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://cairn.health/schemas/cairn/body-mass-index-1.0.json",
+    "title": "Body Mass Index",
+    "description": "Body mass index measurement in kg/m2.",
+    "type": "object",
+    "properties": {
+        "body_mass_index": {
+            "type": "object",
+            "properties": {
+                "value": { "type": "number" },
+                "unit": { "type": "string", "enum": ["kg/m2"] }
+            },
+            "required": ["value", "unit"]
+        },
+        "effective_time_frame": {
+            "type": "object",
+            "properties": {
+                "date_time": { "type": "string", "format": "date-time" }
+            },
+            "required": ["date_time"]
+        }
+    },
+    "required": ["body_mass_index", "effective_time_frame"]
+}

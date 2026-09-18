@@ -5,15 +5,7 @@ import 'package:json_schema/json_schema.dart';
 import 'package:path/path.dart' as p;
 
 /// Loads the vendored OMH / IEEE 1752.1 JSON Schemas (and the Cairn-authored
-/// `cairn:sleep-stage` schema) so tests can validate emitted datapoints
-/// offline (DESIGN.md §13).
-///
-/// Each schema is *bundled* first: every `$ref` (external file or internal
-/// pointer) is recursively inlined into a single ref-free document. The OMH /
-/// IEEE schemas are acyclic, so full inlining is safe, and it sidesteps
-/// `json_schema`'s sync ordering limitation with `definitions`-aliased external
-/// refs. OMH and IEEE `$ref` pools are kept separate because their utility
-/// filenames overlap (e.g. `descriptive-statistic-1.0.json`).
+/// schemas) so tests can validate emitted datapoints offline (DESIGN.md §13).
 class OmhSchemas {
   OmhSchemas._(this._omhRefs, this._ieeeRefs);
 
@@ -62,6 +54,36 @@ class OmhSchemas {
     const {},
   );
 
+  /// Body fat percentage schema.
+  late final JsonSchema bodyFatPercentage = _fromFile(
+    'lib/src/omh/schemas/cairn/body-fat-percentage-1.0.json',
+    const {},
+  );
+
+  /// Lean body mass schema.
+  late final JsonSchema leanBodyMass = _fromFile(
+    'lib/src/omh/schemas/cairn/lean-body-mass-1.0.json',
+    const {},
+  );
+
+  /// Body mass index schema.
+  late final JsonSchema bodyMassIndex = _fromFile(
+    'lib/src/omh/schemas/cairn/body-mass-index-1.0.json',
+    const {},
+  );
+
+  /// Body water mass schema.
+  late final JsonSchema bodyWaterMass = _fromFile(
+    'lib/src/omh/schemas/cairn/body-water-mass-1.0.json',
+    const {},
+  );
+
+  /// Body height schema.
+  late final JsonSchema bodyHeight = _fromFile(
+    'lib/src/omh/schemas/cairn/body-height-1.0.json',
+    const {},
+  );
+
   /// OMH datapoint header schema.
   late final JsonSchema header = _fromFile(
     'test/fixtures/schemas/omh/header-1.x.json',
@@ -88,8 +110,6 @@ class OmhSchemas {
     return JsonSchema.create(_bundle(root, refs));
   }
 
-  /// Recursively inlines every `$ref` in [root] using [refs] (basename →
-  /// schema), returning a ref-free schema document.
   static Map<String, dynamic> _bundle(
     Map<String, dynamic> root,
     Map<String, Map<String, dynamic>> refs,
@@ -104,8 +124,6 @@ class OmhSchemas {
       if (node is Map<String, dynamic>) {
         final ref = node[r'$ref'];
         if (ref is String) {
-          // A `$ref` object replaces its whole node (no siblings) in the OMH /
-          // IEEE schemas, so sibling keys are intentionally not merged here.
           final hash = ref.indexOf('#');
           final file = hash < 0 ? ref : ref.substring(0, hash);
           final pointer = hash < 0 ? '' : ref.substring(hash + 1);
@@ -126,7 +144,6 @@ class OmhSchemas {
     return resolve(root, root, 0)! as Map<String, dynamic>;
   }
 
-  /// Resolves a JSON Pointer [pointer] within [doc].
   static Object? _navigate(Map<String, dynamic> doc, String pointer) {
     Object? current = doc;
     for (final raw in pointer.split('/')) {
